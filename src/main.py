@@ -88,8 +88,7 @@ def sgd_mses(X_tr, X_ts, y_tr, y_ts, learning_rate=3e-4, batch_size=4, num_epoch
         return loss.item()   
 
 
-    def regularized_loss(dict_params):
-        prior_weights = torch.from_numpy(regr.coef_).float()
+    def regularized_loss(dict_params, prior_weights=0):
         diff = dict_params['dense.weight'] - prior_weights
         return torch.sum(diff.pow(2))
 
