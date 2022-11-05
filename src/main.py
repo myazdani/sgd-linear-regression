@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn import datasets, linear_model
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -8,23 +9,40 @@ import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
-def normalize_and_split_data(X, y, seed=None):
-    X_tr, X_ts, y_tr, y_ts = train_test_split(X, y, 
-                                          random_state=seed)
+def normalize_and_split_data(X, y, seed=None, include_val_set=False):
+    assert len(y.shape) == 2
+    X_tr, X_ts, y_tr, y_ts = train_test_split(X, y, random_state=seed)
                 
     sc_inputs = StandardScaler()
     sc_outputs = StandardScaler()
 
     sc_inputs.fit(X_tr)
-    sc_outputs.fit(y_tr[:,np.newaxis])
+    sc_outputs.fit(y_tr)
 
     X_tr_sc = sc_inputs.transform(X_tr)
     X_ts_sc = sc_inputs.transform(X_ts)
 
-    y_tr_sc = sc_outputs.transform(y_tr[:,np.newaxis])
-    y_ts_sc = sc_outputs.transform(y_ts[:,np.newaxis])
+    y_tr_sc = sc_outputs.transform(y_tr)
+    y_ts_sc = sc_outputs.transform(y_ts)
 
-    return X_tr_sc, X_ts_sc, y_tr_sc, y_ts_sc
+    data_set = {}
+    data_set["X_tr"] = X_tr_sc
+    data_set["X_ts"] = X_ts_sc
+    data_set["y_tr"] = y_tr_sc
+    data_set["y_ts"] = y_ts_sc
+
+    if include_val_set:
+        N = y_ts_sc.shape[0]//2
+        X_vl_sc = X_ts_sc[:N,:]
+        y_vl_sc = y_ts_sc[:N,:]
+        X_ts_sc = X_ts_sc[N:,:]
+        y_ts_sc = y_ts_sc[N:,:]
+        data_set["X_vl"] = X_vl_sc
+        data_set["X_ts"] = X_ts_sc
+        data_set["y_vl"] = y_vl_sc
+        data_set["y_ts"] = y_ts_sc
+
+    return data_set
 
 def baseline_mse(regr, X_tr, X_ts, y_tr, y_ts):
     regr.fit(X_tr, y_tr)
@@ -46,14 +64,11 @@ class PreppedData(Dataset):
         return self.X[idx], self.y[idx]
 
 
-def sgd_mses(X_tr, X_ts, y_tr, y_ts):
-    learning_rate = 3e-4
-    bs = 4 # batch_size
-    num_epochs = 50
+def sgd_mses(X_tr, X_ts, y_tr, y_ts, learning_rate=3e-4, batch_size=4, num_epochs=50):
     train_set = PreppedData(X_tr, y_tr)
     test_set = PreppedData(X_ts, y_ts)
 
-    train_loader = DataLoader(train_set, batch_size = bs)
+    train_loader = DataLoader(train_set, batch_size = batch_size)
 
     def eval_model(model):
         model.eval()
@@ -123,20 +138,28 @@ def main():
 
     ls_tr_mses, ls_ts_mses = [], []
     ridge_tr_mses, ridge_ts_mses = [], []
+    rf_tr_mses, rf_ts_mses = [], []
     sgd_tr_mses, sgd_ts_mses = [], []
-    for _ in range(10):
-        X_tr, X_ts, y_tr, y_ts = normalize_and_split_data(diabetes_X, diabetes_y)
+    for _ in range(3):
+        data_splits = normalize_and_split_data(diabetes_X, diabetes_y[:,np.newaxis])
         
-        ls_tr_mse, ls_ts_mse = baseline_mse(linear_model.LinearRegression(), X_tr, X_ts, y_tr, y_ts)
-        ridge_tr_mse, ridge_ts_mse = baseline_mse(linear_model.RidgeCV(np.logspace(-4,4)), X_tr, X_ts, y_tr, y_ts)
-        sgd_tr_mse, sgd_ts_mse = sgd_mses( X_tr, X_ts, y_tr, y_ts)
+        ls_tr_mse, ls_ts_mse = baseline_mse(linear_model.LinearRegression(), **data_splits)
+        #ridge_tr_mse, ridge_ts_mse = baseline_mse(linear_model.RidgeCV(np.logspace(-4,4)), X_tr, X_ts, y_tr, y_ts)
+        #rf_tr_mse, rf_ts_mse = baseline_mse(RandomForestRegressor(n_estimators=50, n_jobs=-1), X_tr, X_ts, y_tr.ravel(), y_ts.ravel())
+        sgd_tr_mse, sgd_ts_mse = sgd_mses(**data_splits)
 
         ls_tr_mses.append(ls_tr_mse)
         ls_ts_mses.append(ls_ts_mse)
-        ridge_tr_mses.append(ridge_tr_mse)
-        ridge_ts_mses.append(ridge_ts_mse) 
+        #ridge_tr_mses.append(ridge_tr_mse)
+        #ridge_ts_mses.append(ridge_ts_mse) 
+        #rf_tr_mses.append(rf_tr_mse)
+        #rf_ts_mses.append(rf_ts_mse)
         sgd_tr_mses.append(sgd_tr_mse)
         sgd_ts_mses.append(sgd_ts_mse)
        
 
-    return ls_tr_mses, ls_ts_mses, ridge_tr_mses, ridge_ts_mses, sgd_tr_mses, sgd_ts_mses
+    return ls_tr_mses, ls_ts_mses, ridge_tr_mses, ridge_ts_mses, sgd_tr_mses, sgd_ts_mses, rf_tr_mses, rf_ts_mses
+
+
+if __name__ == "__main__":
+    main()
