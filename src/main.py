@@ -137,28 +137,20 @@ def main():
     diabetes_X, diabetes_y = datasets.load_diabetes(return_X_y=True)
 
     ls_tr_mses, ls_ts_mses = [], []
-    ridge_tr_mses, ridge_ts_mses = [], []
-    rf_tr_mses, rf_ts_mses = [], []
     sgd_tr_mses, sgd_ts_mses = [], []
     for _ in range(3):
         data_splits = normalize_and_split_data(diabetes_X, diabetes_y[:,np.newaxis])
         
         ls_tr_mse, ls_ts_mse = baseline_mse(linear_model.LinearRegression(), **data_splits)
-        #ridge_tr_mse, ridge_ts_mse = baseline_mse(linear_model.RidgeCV(np.logspace(-4,4)), X_tr, X_ts, y_tr, y_ts)
-        #rf_tr_mse, rf_ts_mse = baseline_mse(RandomForestRegressor(n_estimators=50, n_jobs=-1), X_tr, X_ts, y_tr.ravel(), y_ts.ravel())
         sgd_tr_mse, sgd_ts_mse = sgd_mses(**data_splits)
 
         ls_tr_mses.append(ls_tr_mse)
         ls_ts_mses.append(ls_ts_mse)
-        #ridge_tr_mses.append(ridge_tr_mse)
-        #ridge_ts_mses.append(ridge_ts_mse) 
-        #rf_tr_mses.append(rf_tr_mse)
-        #rf_ts_mses.append(rf_ts_mse)
         sgd_tr_mses.append(sgd_tr_mse)
         sgd_ts_mses.append(sgd_ts_mse)
        
 
-    return ls_tr_mses, ls_ts_mses, ridge_tr_mses, ridge_ts_mses, sgd_tr_mses, sgd_ts_mses, rf_tr_mses, rf_ts_mses
+    return ls_tr_mses, ls_ts_mses, sgd_tr_mses, sgd_ts_mses
 
 
 if __name__ == "__main__":
