@@ -107,8 +107,7 @@ def sgd_mses(X_tr, X_ts, y_tr, y_ts, learning_rate=3e-4, batch_size=4, num_epoch
                 preds = model(Xb)
                 loss = nn.functional.mse_loss(preds, yb)
                 if penalty > 0:
-                    params = model.named_parameters()
-                    dict_params = dict(params)
+                    dict_params = model.state_dict()
                     loss += penalty*regularized_loss(dict_params)
 
                 optimizer.zero_grad()
